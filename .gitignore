@@ -1,0 +1,10 @@
+# 系统/编辑器杂项
+Thumbs.db
+Desktop.ini
+.DS_Store
+.vscode/
+.idea/
+
+# 不要提交用户本地的 Harness 配置/缓存
+*.log
+node_modules/
