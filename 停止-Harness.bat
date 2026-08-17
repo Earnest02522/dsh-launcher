@@ -2,10 +2,10 @@
 setlocal EnableExtensions
 set "PORT=3080"
 echo.
-echo  ============================================
-echo   DeepSeek Harness 停止中...
-echo   正在结束端口 %PORT% 上的服务进程
-echo  ============================================
+echo  ================================================================================
+echo   DeepSeek Harness is stopping...
+echo   Stopping the service process on port %PORT%
+echo  ================================================================================
 echo.
 set "KILLED="
 for /f "tokens=5" %%P in ('netstat -ano ^| findstr /R ":%PORT%.*LISTENING"') do (
@@ -13,11 +13,11 @@ for /f "tokens=5" %%P in ('netstat -ano ^| findstr /R ":%PORT%.*LISTENING"') do 
   set "KILLED=1"
 )
 if defined KILLED (
-  echo  [OK] 已停止 Harness
+  echo  [OK] Harness has been stopped
 ) else (
-  echo  [!] 未发现运行中的 Harness（端口 %PORT% 无监听）
+  echo  [!] No running Harness found - nothing listening on port %PORT%
 )
 echo.
-echo  窗口将在几秒后自动关闭...
-ping -n 5 127.0.0.1 >nul
+echo  The window will close automatically in a few seconds...
+ping -n 3 127.0.0.1 >nul
 exit /b 0
