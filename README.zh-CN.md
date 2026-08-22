@@ -33,14 +33,14 @@
 3. 检查更新（5 秒限时查 registry，离线安全）：
    - 连不上 registry → `cannot reach the registry - using the cached version`；
    - 本地还没有安装 → `first run detected - downloading and installing`；
-   - 有新版 → `update found: X -> Y`，自动更新；
+   - 有新版 → `update found: X -> Y`，在当前状态窗口中**可见地**下载并安装更新（大版本首次更新可能需几分钟）；
    - 已是最新 → `already the latest version`。
 4. 以**独立隐藏控制台**启动服务（与启动窗口脱离）：
    ```bat
-   powershell -NoProfile -Command "Start-Process -FilePath 'cmd.exe' -ArgumentList '/d','/c','npx --yes @deepseek-ai/dsh web' -WindowStyle Hidden"
+   powershell -NoProfile -Command "Start-Process -FilePath 'cmd.exe' -ArgumentList '/d','/c','npx --yes @deepseek-ai/dsh@<detected-version> web' -WindowStyle Hidden -PassThru"
    ```
    `--yes` 自动确认 npx 的安装/更新提示。服务运行在独立的隐藏控制台里，启动窗口关闭不影响它。
-5. 轮询端口 `3080`（最长约 120 秒），就绪后自动打开浏览器。
+5. 轮询端口 `3080`（最长约 600 秒，每 30 秒提示一次；若服务进程提前退出会直接报错，不会假装成功），就绪后自动打开浏览器。
 6. 窗口提示 `this window closes now...` 后退出 —— **服务继续在后台运行**。
 
 **停止链路** — 双击 `停止-Harness.vbs`：找到监听 `3080` 的进程并结束其整个进程树；约 2 秒后窗口自动关闭。
@@ -107,9 +107,9 @@ dsh-launcher/
 
 ## 技术细节
 
-- **端口判断**：`netstat -ano | findstr /R ":%PORT%.*LISTENING"`（单一无空格模式，避免 `findstr` 按空格拆分参数导致误判）。
-- **更新检测**：`npm view @deepseek-ai/dsh version --fetch-timeout=5000 --fetch-retries=0` 查 registry 最新版；本地版本从 npx 缓存（`%LOCALAPPDATA%\npm-cache\_npx\*`）的 package.json 读取；两者用内联 `node` 脚本逐段数字比较（能正确判断 `1.10.0 > 1.9.5`）。
-- **自动更新**：`npx --yes @deepseek-ai/dsh web` —— `--yes` 等价于在 "Ok to proceed?" 提示处自动输入 `y`。
+- **端口判断**：`netstat -an | findstr /R ":%PORT%[^0-9].*LISTENING"`（单一无空格模式，避免 `findstr` 按空格拆分参数导致误判）。
+- **更新检测**：`npm view @deepseek-ai/dsh version --fetch-timeout=5000 --fetch-retries=0` 查 registry 最新版；本地版本从 npx 缓存（`%LOCALAPPDATA%\npm-cache\_npx\*`）中**最新**的 package.json 读取（历史缓存可能残留多个版本，取最新避免误判）；两者用内联 `node` 脚本逐段数字比较（能正确判断 `1.10.0 > 1.9.5`）。
+- **自动更新**：`npx --yes @deepseek-ai/dsh@<检测到的版本> web` —— 固定使用检测到的最新版本号，`--yes` 等价于在 "Ok to proceed?" 提示处自动输入 `y`。
 - **隐藏后台启动**：PowerShell `Start-Process ... -WindowStyle Hidden` 让服务拥有**独立隐藏控制台**，与启动窗口脱离——启动窗口关闭不影响服务；外层 `powershell` 调用不带 `-WindowStyle Hidden`，避免把启动窗口一起隐藏。
 - **停止**：`for /f "tokens=5"` 取监听 PID → `taskkill /PID <pid> /T /F`。
 - **编码**：所有脚本为**纯 ASCII + CRLF**；VBS 里的中文文件名用 `ChrW(...)` 在运行时拼接——任何 Windows 区域设置都不会乱码。

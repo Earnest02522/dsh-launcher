@@ -8,7 +8,7 @@ echo   Stopping the service process on port %PORT%
 echo  ================================================================================
 echo.
 set "KILLED="
-for /f "tokens=5" %%P in ('netstat -ano ^| findstr /R ":%PORT%.*LISTENING"') do (
+for /f "tokens=5" %%P in ('netstat -ano ^| findstr /R ":%PORT%[^0-9].*LISTENING"') do (
   taskkill /PID %%P /T /F >nul 2>nul
   set "KILLED=1"
 )

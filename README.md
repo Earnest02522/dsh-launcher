@@ -13,7 +13,7 @@ Double-click to launch the [DeepSeek Harness](https://github.com/deepseek-ai/dsh
 
 - **One click to start** — double-click `启动-DeepSeek-Harness.vbs`: no typing, no manual commands.
 - **Smart status window** — a console window shows each step and **closes itself after the browser opens**.
-- **Auto-update** — `npx --yes` auto-answers the "Ok to proceed?" prompt; when a new version is found the window shows `update found: X -> Y` and updates automatically.
+- **Auto-update** — downloads and installs the update **visibly in the status window** when a new version is found (shows `update found: X -> Y`); the first install of a new major may take a few minutes.
 - **Auto-open browser** — opens `http://127.0.0.1:3080` as soon as it is ready.
 - **Close window, keep the port** — closing the launcher window does NOT stop the service; it keeps running hidden in the background until you stop it.
 - **No duplicate start** — if already running, only opens the page.
@@ -33,14 +33,14 @@ Double-click to launch the [DeepSeek Harness](https://github.com/deepseek-ai/dsh
 3. Checks for updates (bounded 5 s registry query, offline-safe):
    - Registry unreachable → `cannot reach the registry - using the cached version`.
    - No local copy yet → `first run detected - downloading and installing`.
-   - New version available → `update found: X -> Y`, updates automatically.
+   - New version available → `update found: X -> Y`, downloads and installs the update visibly in the status window (may take a few minutes);
    - Already latest → `already the latest version`.
 4. Starts the service **detached and hidden** in its own console:
    ```bat
-   powershell -NoProfile -Command "Start-Process -FilePath 'cmd.exe' -ArgumentList '/d','/c','npx --yes @deepseek-ai/dsh web' -WindowStyle Hidden"
+   powershell -NoProfile -Command "Start-Process -FilePath 'cmd.exe' -ArgumentList '/d','/c','npx --yes @deepseek-ai/dsh@<detected-version> web' -WindowStyle Hidden -PassThru"
    ```
    `--yes` auto-confirms any npx install/update prompt. The service runs in a separate hidden console, so the launcher window can close without touching it.
-5. Polls port `3080` (up to ~120 s); as soon as it is ready, opens the browser.
+5. Polls port `3080` (up to ~600 s, with a status line every 30 s; if the service process exits early, it reports an error instead of pretending to succeed); as soon as it is ready, opens the browser.
 6. The window prints `this window closes now...` and exits — **the service keeps running in the background**.
 
 **Stop flow** — double-click `停止-Harness.vbs`: finds the process listening on `3080` and ends its whole process tree; the window closes itself after ~2 s.
@@ -107,9 +107,9 @@ dsh-launcher/
 
 ## Technical details
 
-- **Port check**: `netstat -ano | findstr /R ":%PORT%.*LISTENING"` (a single no-space pattern to avoid `findstr` splitting arguments and misjudging).
-- **Update check**: `npm view @deepseek-ai/dsh version --fetch-timeout=5000 --fetch-retries=0` for the registry's latest version; the local version is read from the npx cache (`%LOCALAPPDATA%\npm-cache\_npx\*`); a small inline `node` script compares the two segment-by-segment (handles `1.10.0 > 1.9.5` correctly).
-- **Auto-update**: `npx --yes @deepseek-ai/dsh web` — `--yes` equals auto-typing `y` at the "Ok to proceed?" prompt.
+- **Port check**: `netstat -an | findstr /R ":%PORT%[^0-9].*LISTENING"` (a single no-space pattern to avoid `findstr` splitting arguments and misjudging).
+- **Update check**: `npm view @deepseek-ai/dsh version --fetch-timeout=5000 --fetch-retries=0` for the registry's latest version; the local version is read from the **newest** package.json in the npx cache (`%LOCALAPPDATA%\npm-cache\_npx\*`, stale copies of old versions are ignored); a small inline `node` script compares the two segment-by-segment (handles `1.10.0 > 1.9.5` correctly).
+- **Auto-update**: `npx --yes @deepseek-ai/dsh@<detected-version> web` — pins the exact detected version so npx cannot resolve a different one; `--yes` equals auto-typing `y` at the "Ok to proceed?" prompt.
 - **Hidden background start**: PowerShell `Start-Process ... -WindowStyle Hidden` gives the service its own hidden console, detached from the launcher window — closing the launcher window does not stop the service. The outer `powershell` call carries no `-WindowStyle Hidden`, so the launcher window itself stays visible.
 - **Stop**: `for /f "tokens=5"` grabs the listening PID → `taskkill /PID <pid> /T /F`.
 - **Encoding**: all scripts are **pure ASCII + CRLF**; Chinese file names inside VBS are built at runtime via `ChrW(...)` — no mojibake on any Windows locale.
